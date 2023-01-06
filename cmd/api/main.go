@@ -23,6 +23,7 @@ func main() {
 	app.Domain = "example.com"
 
 	log.Println("Starting application on port", port)
+	http.HandleFunc("/",Hello)
 
 	// start a web server
 	err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil)

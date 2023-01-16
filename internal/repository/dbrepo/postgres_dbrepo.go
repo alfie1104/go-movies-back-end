@@ -68,7 +68,7 @@ func (m *PostgresDBRepo) GetUserByEmail(email string) (*models.User, error){
 	defer cancel()
 
 	query := `select id, email, first_name, last_name, password,
-		create_at, updated_at from users where email = $1`
+		created_at, updated_at from users where email = $1`
 	
 	var user models.User
 	row := m.DB.QueryRowContext(ctx, query, email)

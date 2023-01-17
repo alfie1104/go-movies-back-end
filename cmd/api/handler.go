@@ -3,6 +3,9 @@ package main
 import (
 	"errors"
 	"net/http"
+	"strconv"
+
+	"github.com/golang-jwt/jwt/v4"
 )
 
 func (app *application) Home(w http.ResponseWriter, r *http.Request){
@@ -75,4 +78,65 @@ func (app *application) authenticate(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, refreshCookie)
 
 	app.writeJSON(w, http.StatusAccepted, tokens)
+}
+
+func (app *application) refreshToken(w http.ResponseWriter, r *http.Request){
+	for _, cookie := range r.Cookies(){
+		if cookie.Name == app.auth.CookieName {
+			claims := &Claims{}
+			refreshToken := cookie.Value
+
+			//parse the token to get the claims
+			/*
+			 jwt.ParseWithClaims(tokenString, Claims, KeyFunction)
+			 토큰 검증을 위해 ParseWithClaims 함수 사용
+			 - tokenString : 검증할 토큰 문자열
+			 - Claims : Claims 구조체 포인터
+			 - KeyFunctions : 토큰 서명 검증전 검증 핸들러
+			*/
+			_, err := jwt.ParseWithClaims(refreshToken, claims, func(token *jwt.Token) (interface{}, error){
+				// if 잘못된 토큰 인 경우 {
+				// 	return nil, err //secret 제공 거부, 에러 리턴
+				// }
+				// if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				// 	return nil, errors.New("unexpected signing method")
+				// }
+				return []byte(app.JWTSecret), nil
+			})
+
+			if err != nil {
+				app.errorJSON(w, errors.New("unauthorized"), http.StatusUnauthorized)
+				return
+			}
+
+			// get the user id from the token claims
+			// Atoi : 숫자로 이루어진 문자열을 숫자로 변환
+			userID, err := strconv.Atoi(claims.Subject)
+			if err != nil {
+				app.errorJSON(w, errors.New("unknown user"), http.StatusUnauthorized)
+				return
+			}
+
+			user, err := app.DB.GetUserById(userID)
+			if err != nil {
+				app.errorJSON(w, errors.New("unknown user"), http.StatusUnauthorized)
+				return
+			}
+
+			u := jwtUser{
+				ID : user.ID,
+				FirstName:  user.FirstName,
+				LastName: user.LastName,
+			}
+
+			tokenPairs, err := app.auth.GenerateTokenPair(&u)
+			if err != nil {
+				app.errorJSON(w, errors.New("error generating tokens"), http.StatusUnauthorized)
+				return
+			}
+
+			http.SetCookie(w, app.auth.GetRefreshCookie(tokenPairs.RefreshToken))
+			app.writeJSON(w, http.StatusOK,tokenPairs)
+		}
+	}
 }

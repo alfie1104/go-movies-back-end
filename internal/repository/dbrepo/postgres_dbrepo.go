@@ -91,7 +91,7 @@ func (m *PostgresDBRepo) OneMovie(id int) (*models.Movie, error) {
 	}
 
 	// get genres, if any
-	query = `select g.id, g.genre from movie_genres mg
+	query = `select g.id, g.genre from movies_genres mg
 			left join genres g on (mg.genre_id = g.id)
 			where mg.movie_id = $1
 			order by g.genre`
@@ -149,7 +149,7 @@ func (m *PostgresDBRepo) OneMovieForEdit(id int) (*models.Movie, []*models.Genre
 	}
 
 	// get genres, if any
-	query = `select g.id, g.genre from movie_genres mg
+	query = `select g.id, g.genre from movies_genres mg
 			left join genres g on (mg.genre_id = g.id)
 			where mg.movie_id = $1
 			order by g.genre`
